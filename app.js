@@ -97,6 +97,11 @@ app.get('/register', (req, res) => {
     res.render('register');
 });
 
+app.get('/mente', (req, res) => {
+    res.render('findMentor');
+});
+
+
 app.post('/login', async (req, res) => {
     try {
         if (req.cookies.token) {
