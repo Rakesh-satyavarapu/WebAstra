@@ -11,6 +11,11 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const mongoose = require('mongoose');
 const userSchema = require('./models/user.model');
+const questSchema = require('./models/quest.model');
+
+
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 env.config();  
 
@@ -21,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use(cookieParser());
 
-// **Add session middleware before passport**
+//session middleware
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your_secret_key',
     resave: false,
@@ -92,6 +97,27 @@ app.post('/createUser', async (req, res) => {
     }
 });
 
+app.get('/viewP',(req,res)=>{res.render('ViewProfile')})
+
+app.get('/findM',isLoggedIn,async(req,res)=>{
+        try {
+            let mentors = await userSchema.find({ role: 'mentor' }).select('firstname lastname email bio expertise availability'); 
+            let token = req.user
+            res.render('FindMentor', { mentors,token });
+        } catch (error) {
+            console.error('Error fetching mentors:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+app.get('/chat',isLoggedIn,async(req,res)=>{
+    let user = await userSchema.findOne({email:req.user.email})
+    res.render('Chat',{user})})
+
+app.get('/schedule',isLoggedIn,async(req,res)=>{
+    let user = await userSchema.findOne({email:req.user.email}).populate('session')
+    res.render('Schedule',{user})
+})
 
 app.get('/register', (req, res) => {
     res.render('register');
@@ -104,10 +130,6 @@ app.get('/mente', (req, res) => {
 
 app.post('/login', async (req, res) => {
     try {
-        if (req.cookies.token) {
-            return res.send("Error: Please log out before logging in with a different account.");
-        }
-
         let { email, password } = req.body;
         let user = await userSchema.findOne({ email });
 
@@ -129,6 +151,47 @@ app.post('/login', async (req, res) => {
     }
 });
 
+const { spawn } = require('child_process');
+
+app.post('/chatInput', isLoggedIn, async (req, res) => {
+    let { quest } = req.body;
+
+    if (!quest) {
+        return res.render("Chat", { user: { username: req.user.email }, response: "Please enter a question!" });
+    }
+
+    try {
+        // Store the question in MongoDB
+        let userdetails = await userSchema.findOne({ email: req.user.email });
+        let questionData = await questSchema.create({ user: userdetails._id, quest });
+
+        // Spawn a Python process to handle the AI response
+        const pythonProcess = spawn('python', ['predict.py', quest]);
+
+        let responseText = '';
+        pythonProcess.stdout.on('data', (data) => {
+            responseText += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            console.error(`Python Error: ${data}`);
+        });
+
+        pythonProcess.on('close', async (code) => {
+            if (code === 0) {
+                // Render the chat page with AI response
+                res.render("Chat", { user: userdetails, response: responseText.trim() });
+            } else {
+                res.status(500).send({ error: 'Error processing AI response' });
+            }
+        });
+
+    } catch (error) {
+        console.error("Error handling chat input:", error);
+        res.render("Chat", { user: { username: req.user.email }, response: "Error processing request." });
+    }
+});
+
 app.get('/logout', (req, res) => {
     res.clearCookie('token');
     req.logout(() => {
@@ -141,7 +204,7 @@ app.get('/home',isLoggedIn, async(req, res) => {
     res.render("home", { token: req.cookies.token,user });
 });
 
-// **Fix JWT verification middleware**
+
 function isLoggedIn(req, res, next) {
     const token = req.cookies.token;
     if (!token) {

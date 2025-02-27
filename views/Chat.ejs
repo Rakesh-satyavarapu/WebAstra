@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+</head>
+<body>
+    <div class="container-fluid-lg p-5">
+        <h1 class="text-muted">welcome<span class="text-danger"> <%=user.username%></span></h1>
+    <form class="form-group d-flex justify-content align-items-center" action="/chatInput" method="post">
+        <br><br><br>
+    <div class="row container-fluid ">
+        <div class="col-md-8"><input class="form-control d-flex justify-content align-items-center" type="text" name="quest" placeholder="Ask me anything..."></div>
+        <div class="col-md-4"><button class="btn btn-primary btn-default">Send <i class="bi bi-send"></i>
+        </button>
+        </div>
+    </div>    
+    </form>
+    
+    </div>
+</body>
+</html>

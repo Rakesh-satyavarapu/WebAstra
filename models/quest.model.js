@@ -1,10 +1,9 @@
 const mongoose = require('mongoose')
-let emailPostSchema = mongoose.Schema({
+let PostSchema = mongoose.Schema({
     user:{type:mongoose.Schema.Types.ObjectId,
     ref:'user'},
-    name:String,
-    Mailcontent:String
+    quest:String,
 },{timestamps:true})
 
-let post = mongoose.model('Mailpost',emailPostSchema)
+let post = mongoose.model('QuestPost',PostSchema)
 module.exports = post

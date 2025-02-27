@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentor Profile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+        }
+        .navbar {
+            background-color: #563dff;
+        }
+        .mentor-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .tag {
+            background: #e5e7eb;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            margin-right: 5px;
+            display: inline-block;
+        }
+        .details-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">MentorConnect</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/find-mentor">Find Mentors</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/sessions">Sessions</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/messages">Messages</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/profile">👤 Arjun</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5">
+        <div class="row">
+            <!-- Mentor Profile Section -->
+            <div class="col-md-8">
+                <div class="mentor-card">
+                    <div class="d-flex align-items-center">
+                        <img src="<%= mentor.image %>" alt="Mentor" class="rounded-circle me-3" width="70" height="70">
+                        <div>
+                            <h4 class="mb-0"><%= mentor.name %></h4>
+                            <p class="text-muted"><i class="bi bi-briefcase"></i> <%= mentor.role %> at <%= mentor.company %></p>
+                        </div>
+                        <div class="ms-auto">
+                            <span class="text-warning fs-5">⭐ <%= mentor.rating %></span>
+                            <a href="/book-session/<%= mentor.id %>" class="btn btn-primary ms-3">Book a Session</a>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h5>About</h5>
+                    <p><%= mentor.about %></p>
+
+                    <h5>Expertise</h5>
+                    <div>
+                        <% mentor.skills.forEach(skill => { %>
+                            <span class="tag"><%= skill %></span>
+                        <% }); %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details Sidebar -->
+            <div class="col-md-4">
+                <div class="details-card">
+                    <h5>Details</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Experience:</strong> <%= mentor.experience %> years</li>
+                        <li><strong>Current Role:</strong> <%= mentor.role %></li>
+                        <li><strong>Company:</strong> <%= mentor.company %></li>
+                        <li><strong>Availability:</strong> <%= mentor.availability %> available slots</li>
+                        <li><strong>Session Duration:</strong> <%= mentor.sessionDuration %> minutes</li>
+                        <li><strong>Location:</strong> <%= mentor.location %></li>
+                        <li><strong>Contact:</strong> <span class="text-muted">Available after booking</span></li>
+                    </ul>
+                    <a href="/book-session/<%= mentor.id %>" class="btn btn-primary w-100">Book a Session</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

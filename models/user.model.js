@@ -48,6 +48,10 @@ let userSchema = mongoose.Schema({
         type: [String],
         default: []
     },
+    sessions: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'session'
+    }],
     mentorId: { // For Mentees (Optional)
         type: mongoose.Schema.Types.ObjectId,
         ref: 'user',
