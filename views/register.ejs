@@ -3,33 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Register</title>
     
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="stylesheets/style.css">
 </head>
 <body>
     <br><br>
     <h1 class="text-center">Register Form</h1>
-    <!-- <button type="button" class="close text-danger" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-    </button> --><br>
+    <br>
     <div class="container-fluid d-flex w-50 align-items-center justify-content-center">
-        <form class="form-group p-3  bg-opacity " action="/createUser" method="post">
+        <form class="form-group p-3 bg-opacity w-100" action="/createUser" method="post">
+            
+            <!-- Name Fields -->
             <div class="name row">
-                <div class="col-md-6"><input class="form-control text-light bg-transparent mb-2" type="text" placeholder="enter First name" name="firstname" required></div>
-                <div class="col-md-6"><input class="form-control text-light bg-transparent mb-2 " type="text" placeholder="enter Last name" name="lastname" required></div>    
+                <div class="col-md-6">
+                    <input class="form-control bg-transparent mb-2" type="text" placeholder="Enter First Name" name="firstname" required>
+                </div>
+                <div class="col-md-6">
+                    <input class="form-control bg-transparent mb-2" type="text" placeholder="Enter Last Name" name="lastname" required>
+                </div>
             </div>
-            <input class="form-control text-light bg-transparent mb-2" type="text" placeholder="enter username" name="username" required>
-            <input class="form-control text-light bg-transparent mb-2" type="email" placeholder="enter email" name="email" required>
-            <input class="form-control text-light bg-transparent mb-3" type="password" placeholder="enter password" name="password" required>
 
-            <div class="d-flex justify-content-end "><button class="btn mr-3 w-25  btn-outline-primary flex-end">Register</button></div>
+            <input class="form-control bg-transparent mb-2" type="text" placeholder="Enter Username" name="username" required>
+            <input class="form-control bg-transparent mb-2" type="email" placeholder="Enter Email" name="email" required>
+            <input class="form-control bg-transparent mb-3" type="password" placeholder="Enter Password" name="password" required>
+
+            <!-- Role Selection -->
+            <label class="">Register as:</label>
+            <select class="form-control  bg-transparent mb-3" id="role" name="role" required>
+                <option value="">Select Role</option>
+                <option value="mentor">Mentor</option>
+                <option value="mentee">Mentee</option>
+            </select>
+
+            <!-- Mentor-Specific Fields -->
+            <div id="mentorFields" style="display: none;">
+                <input class="form-control  bg-transparent mb-2" type="text" placeholder="Enter Expertise (comma-separated)" name="expertise">
+                <textarea class="form-control  bg-transparent mb-2" placeholder="Enter Bio" name="bio"></textarea>
+                <input class="form-control  bg-transparent mb-2" type="text" placeholder="Availability (e.g., Mon-Fri 6PM-9PM)" name="availability">
+            </div>
+
+            <!-- Mentee-Specific Fields -->
+            <div id="menteeFields" style="display: none;">
+                <input class="form-control  bg-transparent mb-2" type="text" placeholder="Enter Interests (comma-separated)" name="interests">
+            </div>
+
+            <div class="d-flex justify-content-end">
+                <button class="btn mr-3 w-25 btn-outline-primary flex-end">Register</button>
+            </div>
         </form>
     </div>
+
     <div class="log d-flex justify-content-center">
-        <p>if already an account exists <a type="submit" href="/login" class="text-danger">login</a></p>
+        <p>If you already have an account, <a href="/" class="text-danger">login</a></p>
     </div>
+
+    <script>
+        $(document).ready(function () {
+            $("#role").change(function () {
+                var selectedRole = $(this).val();
+                if (selectedRole === "mentor") {
+                    $("#mentorFields").show();
+                    $("#menteeFields").hide();
+                } else if (selectedRole === "mentee") {
+                    $("#mentorFields").hide();
+                    $("#menteeFields").show();
+                } else {
+                    $("#mentorFields").hide();
+                    $("#menteeFields").hide();
+                }
+            });
+        });
+    </script>
+
 </body>
 </html>

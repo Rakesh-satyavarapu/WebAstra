@@ -11,7 +11,8 @@ let userSchema = mongoose.Schema({
     },
     username:{
         type:String,
-        required:[true,'enter user name']
+        required:[true,'enter user name'],
+        unique:[true,'Username already Exists']
     },
     email:{
         type:String,
@@ -19,13 +20,39 @@ let userSchema = mongoose.Schema({
         match: [
             /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
             'Please enter a valid email address',
-        ]
+        ],
+        unique:[true,'Email already exists']
     },
     password:{
         type:String,
         required:[true,"enter password"]
     },
-    posts:[{type:mongoose.Schema.Types.ObjectId,ref:'Mailpost'}]//reference is name of table or document
+    role: {
+        type: String,
+        enum: ['mentor', 'mentee'],
+        required: true
+    },
+    expertise: { // For Mentors
+        type: [String],
+        default: []
+    },
+    bio: { // For Mentors
+        type: String,
+        default: ''
+    },
+    availability: { // For Mentors
+        type: String, // Example: "Monday-Friday 6PM-9PM"
+        default: ''
+    },
+    interests: { // For Mentees
+        type: [String],
+        default: []
+    },
+    mentorId: { // For Mentees (Optional)
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        default: null
+    }//reference is name of table or document
 },{timestamps:true})
 
 let user = mongoose.model('user',userSchema)

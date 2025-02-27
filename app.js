@@ -1,186 +1,417 @@
 const express = require('express');
 const app = express();
 const axios = require('axios');
-let env = require('dotenv')
-let path = require('path')
+const env = require('dotenv');
+const path = require('path');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const session = require('express-session'); // Add express-session
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const mongoose = require('mongoose');
+const userSchema = require('./models/user.model');
+
 env.config();  
+
 const PORT = process.env.PORT || 3000;
-let bcrypt=require('bcrypt')
-let jwt = require('jsonwebtoken')
-const cookieParser = require('cookie-parser')
 
 app.use(express.json());
-app.use(express.urlencoded({extended:true}));
-app.use(express.static('public'))
-app.use(cookieParser())
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
+app.use(cookieParser());
+
+// **Add session middleware before passport**
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your_secret_key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false }  // Set to `true` in production with HTTPS
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.set("view engine", "ejs");
 
-const mongoose = require('mongoose')
-let userSchema = require('./models/user.model')
-let MailSchema = require('./models/emailPost.model')
+// Routes
+app.get('/', (req, res) => {
+    res.render('login');
+});
 
-// Function to summarize email using Hugging Face API
-const summarizeEmail = async (emailText) => {
-    const apiKey = process.env.HUGGING_FACE_API_KEY;  // Fetch API key from .env
-
-    const headers = {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-    };
-
-    const body = {
-        inputs: emailText,
-    };
-
+app.post('/createUser', async (req, res) => {
     try {
-        const response = await axios.post(
-            'https://api-inference.huggingface.co/models/facebook/bart-large-cnn',  // Summarization model
-            body,
-            { headers }
-        );
-        return response.data[0].summary_text;
-    } catch (error) {
-        console.error("Error during API request:", error);
-        return { error: 'Failed to summarize email' };
-    }
-};
-
-app.get('/',(req,res)=>{
-    res.render('register')
-})
-
-app.post('/createUser',async (req,res)=>{
-    let {firstname,lastname,username,email,password}=req.body
-    bcrypt.genSalt(10,(err,salt)=>{
-        bcrypt.hash(password,salt,async(err,hash)=>{
-            
-            let createdUser = await userSchema.create({firstname,lastname,username,email,password:hash})
-            console.log("user created",createdUser.username,createdUser.password)
-            // res.render("home",{email:createdUser.email})
-            res.redirect('/home')
-        })
-    })
-
-    let token = jwt.sign({email:email},process.env.JWT_SECRET)
-    res.cookie("token",token)
-})
-
-app.get('/login',(req,res)=>{
-    res.render('login')
-})
-
-app.post('/login',async(req,res)=>{
-    let{email,password}=req.body;
-    let user = await userSchema.findOne({email})
-    if(user)
-    {
-        bcrypt.compare(password,user.password,(err,result)=>{
-            console.log(result)
-            if(result)
-            {
-                let token = jwt.sign({email:email},process.env.JWT_SECRET)
-                res.cookie('token',token)
-                // res.render('home',{user:user})
-                res.redirect('/home')
-            }
-            else
-            {
-                res.send('invalid creditinals wrong password or email')
-            }
-        })    
-    }
-    else{res.redirect('/')}
-})
-
-app.get('/logout',(req,res)=>{
-    res.cookie('token',"")
-    res.redirect('/login')
-})
-
-app.get('/home',(req,res)=>{
-    res.render("Mail");
-});
-
-function isLoggedIn(req,res,next)
-{
-    if(req.cookies.token === "")
-    {
-       return res.redirect('/login')
-    }
-    else{
-        let data = jwt.verify(req.cookies.token,process.env.JWT_SECRET)
-        req.user=data
-    }
-    next()
-}
-// API endpoint for summarizing email
-app.post('/api/summarize',isLoggedIn, async (req, res) => {
-    const { emailText,name } = req.body;
-    let userdetails = await userSchema.findOne({email:req.user.email});
-    let mailData=await MailSchema.create({user:userdetails._id,name,Mailcontent:emailText})
-    userdetails.posts.push(mailData._id)
-    await userdetails.save()
-    if (!emailText) {
-        return res.status(400).send({ error: 'No email content provided' });
-    }
-
-    const summary = await summarizeEmail(emailText);
-    return res.render("summary", { summaryD: summary });
-});
-
-app.get('/allMailUploads',isLoggedIn,async(req,res)=>{
-    let user=await userSchema.findOne({email:req.user.email}).populate('posts')
-    res.render('Allmails',{posts:user.posts})
-})
-
-app.get('/mailview/:name',isLoggedIn,async(req,res)=>{
-    let mail= await MailSchema.findOne({name:req.params.name})
-    let con=mail.Mailcontent
-    res.send(con)
-})
-
-mongoose.connect(`${process.env.MONGODB_URL}/projectDB`)
-.then(()=>{
-    console.log('database connected')
-    app.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
-})
-})
-
-.catch((err)=>{console.log('error',err.message)})
-
-const { spawn } = require('child_process'); // For spawning Python process
-
-// API route for classification
-app.post('/api/classify',isLoggedIn ,async (req, res) => {
-    const { emailText,name } = req.body;
-    let userdetails = await userSchema.findOne({email:req.user.email});
-    let mailData=await MailSchema.create({user:userdetails._id,name,Mailcontent:emailText})
-    userdetails.posts.push(mailData._id)
-    await userdetails.save()
-    if (!emailText) {
-        return res.status(400).send({ error: 'No email content provided' });
-    }
-
-    // Spawn a new Python process to classify the email
-    const pythonProcess = spawn('python', ['predict.py', emailText]);
-
-    let result = '';
-    pythonProcess.stdout.on('data', (data) => {
-        result += data.toString();
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-        console.error(`stderr: ${data}`);
-    });
-
-    pythonProcess.on('close', (code) => {
-        if (code === 0) {
-            // Send the classification result as a response
-            res.render("classify",{ classification: result });
-        } else {
-            res.status(500).send({ error: 'Error during classification' });
+        if (req.cookies.token) {
+            return res.send("Error: Please log out before registering a new account.");
         }
+
+        // Extract all required fields from request body
+        let { firstname, lastname, username, email, password, role, expertise, bio, availability, interests } = req.body;
+        
+        let checkEmail = await userSchema.findOne({ email });
+        if (checkEmail) return res.send("Error: Email already exists");
+
+        let checkUser = await userSchema.findOne({ username });
+        if (checkUser) return res.send("Error: Username already exists");
+
+        // Hash the password before storing it
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        let userData = {
+            firstname,
+            lastname,
+            username,
+            email,
+            password: hashedPassword,
+            role
+        };
+
+        // Add mentor-specific fields
+        if (role === 'mentor') {
+            userData.expertise = expertise ? expertise.split(",") : [];
+            userData.bio = bio || "";
+            userData.availability = availability || "";
+        }
+        // Add mentee-specific fields
+        else if (role === 'mentee') {
+            userData.interests = interests ? interests.split(",") : [];
+        }
+
+        let createdUser = await userSchema.create(userData);
+        console.log("User created:", createdUser.username);
+
+        // Generate and set JWT token
+        let token = jwt.sign({ email: email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.cookie("token", token, { httpOnly: true });
+
+        res.redirect('/');
+    } catch (err) {
+        console.log("Error while creating user:", err);
+        res.send("Unexpected error occurred");
+    }
+});
+
+
+app.get('/register', (req, res) => {
+    res.render('register');
+});
+
+app.post('/login', async (req, res) => {
+    try {
+        if (req.cookies.token) {
+            return res.send("Error: Please log out before logging in with a different account.");
+        }
+
+        let { email, password } = req.body;
+        let user = await userSchema.findOne({ email });
+
+        if (user) {
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (isMatch) {
+                let token = jwt.sign({ email: email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+                res.cookie('token', token, { httpOnly: true });
+                res.redirect('/home');
+            } else {
+                res.send('Invalid credentials: Wrong password or email');
+            }
+        } else {
+            res.redirect('/');
+        }
+    } catch (err) {
+        console.log("Error during login:", err);
+        res.send('Unexpected error occurred');
+    }
+});
+
+app.get('/logout', (req, res) => {
+    res.clearCookie('token');
+    req.logout(() => {
+        res.redirect('/');
     });
 });
+
+app.get('/home',isLoggedIn, async(req, res) => {
+    let user = await userSchema.findOne({email:req.user.email})
+    res.render("home", { token: req.cookies.token,user });
+});
+
+// **Fix JWT verification middleware**
+function isLoggedIn(req, res, next) {
+    const token = req.cookies.token;
+    if (!token) {
+        return res.redirect('/');
+    }
+    
+    try {
+        let data = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = data;
+        next();
+    } catch (err) {
+        console.log("JWT Error:", err);
+        res.redirect('/');
+    }
+}
+
+// Passport Configuration
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/callback"
+}, async (accessToken, refreshToken, profile, done) => {
+    try {
+        let user = await userSchema.findOne({ email: profile.emails[0].value });
+
+        if (user) {
+            return done(null, user);
+        } else {
+            let newUser = await userSchema.create({
+                firstname: profile.name.givenName,
+                lastname: profile.name.familyName,
+                username: profile.emails[0].value.split('@')[0],
+                email: profile.emails[0].value,
+                password: '' // OAuth users don't need a password
+            });
+
+            return done(null, newUser);
+        }
+    } catch (err) {
+        return done(err, null);
+    }
+}));
+
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        let user = await userSchema.findById(id);
+        done(null, user);
+    } catch (err) {
+        done(err, null);
+    }
+});
+
+// Google Authentication Routes
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: '/' }),
+    (req, res) => {
+        let token = jwt.sign({ email: req.user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.cookie('token', token, { httpOnly: true });
+        res.redirect('/home');
+    });
+
+// MongoDB Connection
+mongoose.connect(`${process.env.MONGODB_URL}/WebAstraDB`, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => {
+        console.log('Database connected');
+        app.listen(PORT, () => {
+            console.log(`Server running on http://localhost:${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.log('Database connection error:', err.message);
+    });
+
+
+
+
+
+
+
+// const express = require('express');
+// const app = express();
+// const axios = require('axios');
+// let env = require('dotenv')
+// let path = require('path')
+// env.config();  
+// const PORT = process.env.PORT || 3000;
+// let bcrypt=require('bcrypt')
+// let jwt = require('jsonwebtoken')
+// const cookieParser = require('cookie-parser')
+
+
+// const passport = require('passport');
+// const GoogleStrategy = require('passport-google-oauth20').Strategy;
+
+
+// app.use(express.json());
+// app.use(express.urlencoded({extended:true}));
+// app.use(express.static('public'))
+// app.use(cookieParser())
+
+// app.set("view engine", "ejs");
+
+// const mongoose = require('mongoose')
+// let userSchema = require('./models/user.model')
+// // let MailSchema = require('./models/emailPost.model')
+
+
+// app.get('/',(req,res)=>{
+//     res.render('login')
+// })
+
+// app.get('/login',(req,res)=>{
+//     res.render('login')
+// })
+
+// app.post('/createUser',async (req,res)=>{
+//     try
+//     {
+//         if (req.cookies.token) 
+//         {
+//             return res.send("Error: Please log out before registering a new account.");
+//         }
+//         let {firstname,lastname,username,email,password}=req.body
+//         let checkEmail = await userSchema.findOne({email})
+//         if (checkEmail){res.send("error while creating user: Email already exist")}
+//         let checkUser = await userSchema.findOne({username})
+//         if (checkUser){res.send("error while creating user: user name already exist")}
+//         bcrypt.genSalt(10,(err,salt)=>{
+//             if(err)
+//             {
+//                 console.log("error in generating salt",err)
+//                 res.send("Error in Generating Salt")
+//             }
+//             bcrypt.hash(password,salt,async(err,hash)=>{
+//             if(err)
+//             {
+//                 console.log("error in hashing",err)
+//                 res.send("Error in Hashing Password")
+//             }
+//                 let createdUser = await userSchema.create({firstname,lastname,username,email,password:hash})
+//                 console.log("user created",createdUser.username,createdUser.password)
+//                 // res.render("home",{email:createdUser.email})
+//                 res.redirect('/')
+//             })
+//         })
+
+//         let token = jwt.sign({email:email},process.env.JWT_SECRET)
+//         res.cookie("token",token,{ httpOnly: true })}
+//     catch (err) 
+//     {
+//         console.log("error while creating user",err)
+//     }
+// })
+
+// app.get('/register',(req,res)=>{
+//     res.render('register')
+// })
+
+// app.post('/login',async(req,res)=>{
+//     try
+//     {
+//         if (req.cookies.token) 
+//             {
+//                 return res.send("Error: Please log out before logging in with a different account.");
+//             }
+//             let{email,password}=req.body;
+//             let user = await userSchema.findOne({email})
+//             if(user)
+//             {
+//                 bcrypt.compare(password,user.password,(err,result)=>{
+//                     console.log(result)
+//                     if(result)
+//                     {
+//                         let token = jwt.sign({email:email},process.env.JWT_SECRET)
+//                         res.cookie('token',token,{ httpOnly: true })
+//                         // res.render('home',{user:user})
+//                         res.render('home',{token:token})
+//                     }
+//                     else
+//                     {
+//                         res.send('invalid creditinals wrong password or email')
+//                     }
+//                 })    
+//             }
+//             else{res.redirect('/')}
+//     }
+//     catch(err){return res.send('Unexpected error Occured')}
+// })
+
+// app.get('/logout',(req,res)=>{
+//     res.cookie('token',"", { httpOnly: true })
+//     res.redirect('/')
+// })
+
+// app.get('/home',isLoggedIn,(req,res)=>{
+//     res.render("Home",{token:req.cookies.token});
+// });
+
+// function isLoggedIn(req,res,next)
+// {
+//     if(req.cookies.token === "")
+//     {
+//        return res.redirect('/login')
+//     }
+//     else{
+//         let data = jwt.verify(req.cookies.token,process.env.JWT_SECRET)
+//         req.user=data
+//     }
+//     next()
+// }
+
+// // Passport configuration
+// passport.use(new GoogleStrategy({
+//     clientID: process.env.GOOGLE_CLIENT_ID,
+//     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+//     callbackURL: "http://localhost:3000/auth/google/callback"
+//   },
+//   async (accessToken, refreshToken, profile, done) => {
+//     try {
+//       let user = await userSchema.findOne({ email: profile.emails[0].value });
+//       if (user) {
+//         return done(null, user);
+//       } else {
+//         // Create a new user if not found
+//         let newUser = await userSchema.create({
+//           firstname: profile.name.givenName,
+//           lastname: profile.name.familyName,
+//           username: profile.emails[0].value.split('@')[0],
+//           email: profile.emails[0].value,
+//           password: '' // Since it's OAuth, password is not required
+//         });
+//         return done(null, newUser);
+//       }
+//     } catch (err) {
+//       return done(err, null);
+//     }
+//   }
+// ));
+
+// passport.serializeUser((user, done) => {
+//   done(null, user.id);
+// });
+
+// passport.deserializeUser(async (id, done) => {
+//   try {
+//     let user = await userSchema.findById(id);
+//     done(null, user);
+//   } catch (err) {
+//     done(err, null);
+//   }
+// });
+
+// app.get('/auth/google',
+//     passport.authenticate('google', { scope: ['profile', 'email'] }));
+  
+//   app.get('/auth/google/callback',
+//     passport.authenticate('google', { failureRedirect: '/' }),
+//     (req, res) => {
+//       // Successful authentication, redirect home.
+//       let token = jwt.sign({ email: req.user.email }, process.env.JWT_SECRET);
+//       res.cookie('token', token, { httpOnly: true });
+//       res.redirect('/home');
+//     });
+  
+// mongoose.connect(`${process.env.MONGODB_URL}/WebAstraDB`)
+// .then(()=>{
+//     console.log('database connected')
+//     app.listen(PORT, () => {
+//         console.log(`Server running on http://localhost:${PORT}`);
+// })
+// })
+// .catch((err)=>{console.log('error',err.message)})
