@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentor Feedback</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    
+    <style>
+        body {
+            background-color: #f4f4f4;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            margin-top: 50px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .star {
+            font-size: 24px;
+            cursor: pointer;
+            color: gray;
+            transition: color 0.2s ease-in-out;
+        }
+
+        .star.checked {
+            color: gold;
+        }
+
+        #stars {
+            display: flex;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Mentor Feedback</h2>
+        
+        <form action="/submit-feedback" method="POST">
+            <div class="mb-3">
+                <label class="form-label">Mentor Name</label>
+                <input type="text" name="mentorName" class="form-control" placeholder="Enter Mentor's Name" value="<%= mentors.username %>" required>
+            </div>
+
+            <!-- Star Rating -->
+            <div class="mb-3">
+                <label class="form-label">Rating</label>
+                <div id="stars">
+                    <span class="star" data-value="1">&#9733;</span>
+                    <span class="star" data-value="2">&#9733;</span>
+                    <span class="star" data-value="3">&#9733;</span>
+                    <span class="star" data-value="4">&#9733;</span>
+                    <span class="star" data-value="5">&#9733;</span>
+                </div>
+                <input type="hidden" name="rating" id="rating" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Your Feedback</label>
+                <textarea name="comment" class="form-control" rows="4" placeholder="Write your feedback..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Submit Feedback</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const stars = document.querySelectorAll(".star");
+            const ratingInput = document.getElementById("rating");
+
+            stars.forEach((star) => {
+                star.addEventListener("click", () => {
+                    let value = star.getAttribute("data-value");
+                    ratingInput.value = value;
+
+                    stars.forEach((s, index) => {
+                        if (index < value) {
+                            s.classList.add("checked");
+                        } else {
+                            s.classList.remove("checked");
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>

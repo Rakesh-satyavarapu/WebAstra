@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const sessionSchema = new mongoose.Schema({
     mentor: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user', // Reference to mentor (from User model)
+        ref: 'User', // Ensure it matches your actual User model
         required: true
     },
     mentee: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'user', // Reference to mentee (from User model)
+        ref: 'User', // Ensure it matches your actual User model
         required: true
     },
     date: {
@@ -45,5 +45,5 @@ const sessionSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-const Session = mongoose.model('session', sessionSchema);
+const Session = mongoose.model('Session', sessionSchema); // Capitalized 'Session' to follow convention
 module.exports = Session;

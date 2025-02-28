@@ -4,7 +4,7 @@ import pickle
 import google.generativeai as genai
 
 # Configure Gemini AI with API Key
-genai.configure(api_key="YOUR_GOOGLE_GEMINI_API_KEY")
+genai.configure(api_key="AIzaSyAU0UdxiXWbkE8AdXR_1fN5MxCylshD_J0")
 
 # Use the Gemini model
 model = genai.GenerativeModel("models/gemini-1.5-pro-latest")

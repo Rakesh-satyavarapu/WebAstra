@@ -12,7 +12,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const mongoose = require('mongoose');
 const userSchema = require('./models/user.model');
 const questSchema = require('./models/quest.model');
-
+const feedSchema = require('./models/mentorFeedBack.model')
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -151,6 +151,18 @@ app.post('/login', async (req, res) => {
     }
 });
 
+app.get('/feedBack',isLoggedIn,async(req,res)=>{
+    let mentors = await userSchema.find({ role: 'mentor' }).select('firstname lastname email bio expertise availability'); 
+    res.render('Meeting',{mentors})
+})
+
+
+app.post('/submit-feedback',(req,res)=>{
+    const {mentorName,rating,comment} = req.body;
+    let feed = feedSchema.create({mentorName,rating,comment})
+    res.send(feed)
+})
+
 const { spawn } = require('child_process');
 
 app.post('/chatInput', isLoggedIn, async (req, res) => {
@@ -165,23 +177,29 @@ app.post('/chatInput', isLoggedIn, async (req, res) => {
         let userdetails = await userSchema.findOne({ email: req.user.email });
         let questionData = await questSchema.create({ user: userdetails._id, quest });
 
-        // Spawn a Python process to handle the AI response
-        const pythonProcess = spawn('python', ['predict.py', quest]);
+        // Spawn a Python process to handle the AI response (use 'python3' if necessary)
+        const pythonProcess = spawn('python3', ['predict.py', quest]);
 
         let responseText = '';
+
+        // Listen for data from Python's stdout
         pythonProcess.stdout.on('data', (data) => {
             responseText += data.toString();
         });
 
+        // Listen for errors from Python's stderr
         pythonProcess.stderr.on('data', (data) => {
-            console.error(`Python Error: ${data}`);
+            console.error(`Python Error: ${data.toString()}`);
         });
 
+        // Handle Python process closure
         pythonProcess.on('close', async (code) => {
             if (code === 0) {
                 // Render the chat page with AI response
                 res.render("Chat", { user: userdetails, response: responseText.trim() });
             } else {
+                // If Python process fails, log and return an error
+                console.error('Python process exited with code', code);
                 res.status(500).send({ error: 'Error processing AI response' });
             }
         });
@@ -284,12 +302,94 @@ mongoose.connect(`${process.env.MONGODB_URL}/WebAstraDB`, { useNewUrlParser: tru
         console.log('Database connection error:', err.message);
     });
 
+const querystring = require("querystring");
 
 
+const ZOOM_CLIENT_ID = process.env.ZOOM_CLIENT_ID;
+const ZOOM_CLIENT_SECRET = process.env.ZOOM_CLIENT_SECRET;
+const ZOOM_REDIRECT_URI = process.env.ZOOM_REDIRECT_URI;
+
+// 🔗 Step 1: Redirect User to Zoom OAuth URL
+app.get("/meet", (req, res) => {
+    const zoomAuthUrl = `https://zoom.us/oauth/authorize?response_type=code&client_id=${encodeURIComponent(ZOOM_CLIENT_ID)}&redirect_uri=${encodeURIComponent(ZOOM_REDIRECT_URI)}`;
+    res.redirect(zoomAuthUrl);
+});
+
+// 🔑 Step 2: Handle OAuth Callback & Get Access Token
+app.get("/oauth-callback", async (req, res) => {
+    const authCode = req.query.code;
+    if (!authCode) return res.status(400).json({ error: "Authorization code is missing" });
+
+    try {
+        const response = await axios.post(
+            "https://zoom.us/oauth/token",
+            querystring.stringify({
+                grant_type: "authorization_code",
+                code: authCode,
+                redirect_uri: ZOOM_REDIRECT_URI,
+            }),
+            {
+                headers: {
+                    Authorization: `Basic ${Buffer.from(`${ZOOM_CLIENT_ID}:${ZOOM_CLIENT_SECRET}`).toString("base64")}`,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            }
+        );
+
+        const { access_token, refresh_token } = response.data;
+        res.json({ message: "Zoom OAuth successful", access_token, refresh_token });
+    } catch (error) {
+        console.error("Zoom OAuth Error:", error.response ? error.response.data : error);
+        res.status(500).json({ error: "Failed to get Zoom access token" });
+    }
+});
+
+// 🎥 Step 3: Create Zoom Meeting (After Getting Access Token)
+app.post("/create-meeting", async (req, res) => {
+    const { access_token } = req.body;
+    if (!access_token) return res.status(400).json({ error: "Access token is required" });
+
+    try {
+        const meetingResponse = await axios.post(
+            "https://api.zoom.us/v2/users/me/meetings",
+            {
+                topic: "Zoom API Meeting via OAuth",
+                type: 2, // Scheduled meeting
+                start_time: "2025-03-01T10:00:00Z",
+                duration: 30,
+                timezone: "Asia/Kolkata",
+                password: "123456",
+                agenda: "Meeting via Zoom API",
+                settings: {
+                    host_video: true,
+                    participant_video: true,
+                    join_before_host: false,
+                    mute_upon_entry: true,
+                    approval_type: 0,
+                    registration_type: 1,
+                },
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${access_token}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        res.json({
+            message: "Zoom Meeting Created Successfully",
+            meeting_link: meetingResponse.data.join_url,
+            start_url: meetingResponse.data.start_url,
+        });
+    } catch (error) {
+        console.error("Zoom API Error:", error.response ? error.response.data : error);
+        res.status(500).json({ error: "Failed to create Zoom meeting" });
+    }
+});
 
 
-
-
+    
 // const express = require('express');
 // const app = express();
 // const axios = require('axios');
