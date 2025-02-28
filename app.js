@@ -342,55 +342,58 @@ function isLoggedIn(req, res, next) {
     }
 }
 
-// Passport Configuration
+
+// Passport configuration
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: "http://localhost:3000/auth/google/callback"
-}, async (accessToken, refreshToken, profile, done) => {
+  },
+  async (accessToken, refreshToken, profile, done) => {
     try {
-        let user = await userSchema.findOne({ email: profile.emails[0].value });
-
-        if (user) {
-            return done(null, user);
-        } else {
-            let newUser = await userSchema.create({
-                firstname: profile.name.givenName,
-                lastname: profile.name.familyName,
-                username: profile.emails[0].value.split('@')[0],
-                email: profile.emails[0].value,
-                password: '' // OAuth users don't need a password
-            });
-
-            return done(null, newUser);
-        }
+      let user = await userSchema.findOne({ email: profile.emails[0].value });
+      if (user) {
+        return done(null, user);
+      } else {
+        // Create a new user if not found
+        let newUser = await userSchema.create({
+          firstname: profile.name.givenName,
+          lastname: profile.name.familyName,
+          username: profile.emails[0].value.split('@')[0],
+          email: profile.emails[0].value,
+          password: '' // Since it's OAuth, password is not required
+        });
+        return done(null, newUser);
+      }
     } catch (err) {
-        return done(err, null);
+      return done(err, null);
     }
-}));
+  }
+));
 
 passport.serializeUser((user, done) => {
-    done(null, user.id);
+  done(null, user.id);
 });
 
 passport.deserializeUser(async (id, done) => {
-    try {
-        let user = await userSchema.findById(id);
-        done(null, user);
-    } catch (err) {
-        done(err, null);
-    }
+  try {
+    let user = await userSchema.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
 });
 
-// Google Authentication Routes
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-app.get('/auth/google/callback',
+app.get('/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] }));
+  
+  app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => {
-        let token = jwt.sign({ email: req.user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        res.cookie('token', token, { httpOnly: true });
-        res.redirect('/home');
+      // Successful authentication, redirect home.
+      let token = jwt.sign({ email: req.user.email }, process.env.JWT_SECRET);
+      res.cookie('token', token, { httpOnly: true });
+      res.redirect('/home');
     });
 
 // MongoDB Connection
