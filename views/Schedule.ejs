@@ -6,6 +6,7 @@
     <title>Book a Session</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css">
     <style>
         body {
             background-color: #f5f5f5;
@@ -13,7 +14,7 @@
         .navbar {
             background-color: #563dff;
         }
-        .calendar-container {
+        .calendar-container, .session-details {
             background: white;
             padding: 20px;
             border-radius: 10px;
@@ -33,29 +34,24 @@
             background: #563dff !important;
             color: white !important;
         }
-        .session-details {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-        }
     </style>
 </head>
 <body>
-    <div class="container-fluid-lg">
-        <nav class="navbar navbar-dark bg-primary">
-            <h1 class="navbar-brand"><a class="nav-link text-white">MCM</a></h1>
-            <div class="d-flex justify-content-end ms-auto">
-                <a class="nav-link text-white" href="/findM">FindMentor</a>
-                <a class="nav-link text-white" href="/schedule"> <i class="bi bi-calendar"></i> Sessions</a>
-                <a class="nav-link text-white" href="/chat"> <i class="bi bi-chat-dots"></i> Messages</a>
-                <a class="nav-link text-white" href="/viewP"> <i class="bi bi-person"></i> Profile</a>
-                <!-- Authentication -->
-                <% if (token) { %>
-                    <a class="nav-link text-danger" href="/logout">Logout</a>
-                <% } else { %>
-                    <a class="nav-link text-white" href="/">Login</a>
-                <% } %>
+    <div class="container-fluid">
+        <nav class="navbar navbar-dark">
+            <div class="container d-flex justify-content-between align-items-center">
+                <h1 class="navbar-brand"><a class="nav-link text-white" href="/">MCM</a></h1>
+                <div class="d-flex">
+                    <a class="nav-link text-white mx-2" href="/findM">Find Mentor</a>
+                    <a class="nav-link text-white mx-2" href="/schedule"> <i class="bi bi-calendar"></i> Sessions</a>
+                    <a class="nav-link text-white mx-2" href="/chat"> <i class="bi bi-chat-dots"></i> Messages</a>
+                    <a class="nav-link text-white mx-2" href="/viewP"> <i class="bi bi-person"></i> Profile</a>
+                    <% if (token) { %>
+                        <a class="nav-link text-danger mx-2" href="/logout">Logout</a>
+                    <% } else { %>
+                        <a class="nav-link text-white mx-2" href="/">Login</a>
+                    <% } %>
+                </div>
             </div>
         </nav>
     </div>
@@ -107,6 +103,41 @@
         </div>
     </div>
 
-    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const days = document.querySelectorAll(".day-box");
+            const selectedSlot = document.getElementById("selected-slot");
+            const bookBtn = document.getElementById("book-btn");
+
+            days.forEach(day => {
+                day.addEventListener("click", function () {
+                    // Remove selected class from all days
+                    days.forEach(d => d.classList.remove("selected"));
+                    
+                    // Add selected class to clicked day
+                    this.classList.add("selected");
+
+                    // Update session details
+                    const date = this.getAttribute("data-date");
+                    const slots = {
+                        "28": ["10:00 AM", "2:00 PM"],
+                        "30": ["11:00 AM"]
+                    };
+
+                    if (slots[date]) {
+                        selectedSlot.innerHTML = `Selected Date: ${date} - Available Slots: ${slots[date].join(", ")}`;
+                        bookBtn.classList.remove("d-none");
+                    } else {
+                        selectedSlot.innerHTML = "No available slots for this date.";
+                        bookBtn.classList.add("d-none");
+                    }
+                });
+            });
+
+            bookBtn.addEventListener("click", function () {
+                alert("Session booked successfully!");
+            });
+        });
+    </script>
 </body>
 </html>
